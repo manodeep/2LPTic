@@ -1,9 +1,12 @@
-#include "allvars.h"
-#include "proto.h"
-
+#include <stdlib.h>//for drand48
 #include <math.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_integration.h>
+
+#include "power.h"
+#include "allvars.h"
+#include "proto.h"
+
 
 const size_t WORKSIZE = 100000;
 #define MAXFILENAMELEN (1000)
@@ -27,11 +30,20 @@ static struct pow_table
 }
  *PowerTable;
 
-
 double fermi_dirac_kernel(double x,void *params);
 void fermi_dirac_init(void);
 double get_fermi_dirac_vel(void);
-
+double get_gaussian_vel(void);
+double PowerSpec_Efstathiou(double k);
+double PowerSpec_EH(double k);
+double PowerSpec_Tabulated(double k);
+double PowerSpec_DM_2ndSpecies(double k);
+double tk_eh(double k);
+double growth(double a);
+double growth_int(double a, void *param);
+double sigma2_int(double k, void *param);
+double TopHatSigma2(double R);
+int    compare_logk(const void *a, const void *b);
 
 double PowerSpec(double k)
 {
@@ -86,8 +98,8 @@ double PowerSpec_DM_2ndSpecies(double k)
    */
 
   double power;
-
-  power = Norm * k * pow(tk_eh(k), 2.0);
+  const double tf_eh = tk_eh(k);
+  power = Norm * tf_eh * tf_eh;
 
   return power;
 }
@@ -99,6 +111,9 @@ void read_power_table(void)
   FILE *fd;
   char buf[MAXFILENAMELEN];
   double k, p;
+#ifdef USE_CAMB        // Addition by CBP -- Use Camb transfer function
+  double pcdm, pbar;   // Allow for individual transfer functions for CDM and Baryons
+#endif
   double kmin,kmax;
   int nbytes=0;
 
@@ -118,12 +133,29 @@ void read_power_table(void)
   NPowerTable = 0;
   do
     {
+#ifndef USE_CAMB   // Addition by CBP -- Use Camb transfer function
       if(fscanf(fd, " %lg %lg ", &k, &p) == 2)
-	NPowerTable++;
-      else
-	break;
+#else
+    /* Format is
+            k/h TF (CDM, Baryons, Photon, Massless Neutrino, Massive Neutrino, Total Mass)
+
+       These quantities need to be converted to format 2LPT expects, which is Delta^2.
+
+       So 
+       
+           Delta^2 = 4 * PI * k^3 * P_k = 4 * PI * k^3 * (8 * PI^2 *k * TF^2)
+
+       and because this has been normalised, we just need to set p= TF^2 * k^4.
+    */
+		if(fscanf(fd,"%lg %lg %lg %lg %lg %lg %lg", &k, &pcdm, &pbar, &p, &p, &p, &p) == 7) 
+#endif
+		  {
+			NPowerTable++;
+		  } else {
+		  break;
+		}
     }
-  while(1);
+	  while(1);
 
   fclose(fd);
 
@@ -136,7 +168,10 @@ void read_power_table(void)
 
 
   PowerTable = malloc(NPowerTable * sizeof(struct pow_table));
-
+  if(PowerTable == NULL) {
+	printf("Could not allocate memory for storing P(k) for %d entries on task %d\n", NPowerTable, ThisTask);
+	FatalError(20);
+  }
   snprintf(buf,MAXFILENAMELEN,"%s", FileWithInputSpectrum);
   fd = fopen(buf,"r");
   if(fd == NULL)
@@ -153,8 +188,29 @@ void read_power_table(void)
   
   do
     {
+#ifndef USE_CAMB   // Addition by CBP -- Use Camb transfer function
       if(fscanf(fd, " %lg %lg ", &k, &p) == 2)
+#else
+    /* Format is
+            k/h TF (CDM, Baryons, Photon, Massless Neutrino, Massive Neutrino, Total Mass)
+
+       These quantities need to be converted to format 2LPT expects, which is Delta^2.
+
+       So 
+       
+           Delta^2 = 4 * PI * k^3 * P_k = 4 * PI * k^3 * (8 * PI^2 *k * TF^2)
+
+       and because this has been normalised, we just need to set p= TF^2 * k^4.
+    */
+	if(fscanf(fd,"%lg %lg %lg %lg %lg %lg %lg", &k, &pcdm, &pbar, &p, &p, &p, &p) == 7)
+#endif
 	{
+
+#ifdef USE_CAMB
+	  k=log10(k);
+	  p=2.*log10(p)+4.*k;
+#endif
+
 	  PowerTable[NPowerTable].logk = k;
 	  PowerTable[NPowerTable].logD = p;
 	  NPowerTable++;
@@ -262,7 +318,7 @@ double PowerSpec_Tabulated(double k)
 
   dlogk = PowerTable[binhigh].logk - PowerTable[binlow].logk;
 
-  if(dlogk == 0.0)
+  if(dlogk <= 0.0)
     FatalError(777);
 
   u = (logk - PowerTable[binlow].logk) / dlogk;
@@ -283,7 +339,8 @@ double PowerSpec_Efstathiou(double k)
 
 double PowerSpec_EH(double k)	/* Eisenstein & Hu */
 {
-  return Norm * k * pow(tk_eh(k), 2.0);
+  const double tf_eh = tk_eh(k);
+  return Norm * k * tf_eh * tf_eh;
 }
 
 
@@ -302,7 +359,7 @@ double tk_eh(double k)		/* from Martin White */
   omegam = Omega;
   ombh2 = OmegaBaryon * HubbleParam * HubbleParam;
 
-  if(OmegaBaryon == 0.0)
+  if(OmegaBaryon <= 0.0)
     ombh2 = 0.04 * HubbleParam * HubbleParam;
 
   k *= (3.085678e24 / UnitLength_in_cm);	/* convert to h/Mpc */
@@ -347,6 +404,7 @@ double TopHatSigma2(double R)
 
 double sigma2_int(double k, void *param)
 {
+  (void) param;
   double kr, kr3, kr2, w, x;
 
   kr = r_tophat * k;
@@ -388,6 +446,7 @@ double growth(double a)
 
 double growth_int(double a, void *param)
 {
+  (void) param;
   return pow(a / (Omega + (1 - Omega - OmegaLambda) * a + OmegaLambda * a * a * a), 1.5);
 }
 
@@ -421,11 +480,12 @@ double F2_Omega(double a)
 double fermi_dirac_vel[LENGTH_FERMI_DIRAC_TABLE];
 double fermi_dirac_cumprob[LENGTH_FERMI_DIRAC_TABLE];
 
-double WDM_V0 = 0;
+double WDM_V0 = -1.0;
 
 
 double fermi_dirac_kernel(double x,void *params)
 {
+  (void) params;
   return x * x / (exp(x) + 1);
 }
 
@@ -468,6 +528,24 @@ void fermi_dirac_init(void)
 
 
 
+
+double get_gaussian_vel(void)
+{
+  double x1,x2,w,y1;
+
+  do {
+	x1 = 2.0 *drand48() -1.0;
+	x2 = 2.0 *drand48() -1.0;
+	w = x1*x1 + x2*x2;
+  } while (w >= 1.0);
+
+  w = sqrt((-2.0 * log(w) )/w);
+  y1 = x1 *w;
+  /*double y2 = x2 *w; */
+
+  return y1;
+}
+
 double get_fermi_dirac_vel(void)
 {
   int i;
@@ -487,16 +565,18 @@ double get_fermi_dirac_vel(void)
   return fermi_dirac_vel[i] * (1 - u) + fermi_dirac_vel[i + 1] * u;
 }
 
-
-
 void add_WDM_thermal_speeds(float *vel)
 {
   double v, phi, theta, vx, vy, vz;
 
-  if(WDM_V0 == 0)
+  if(WDM_V0 <= 0.0)
     fermi_dirac_init();
 
+#ifndef WDM_GAUSSIAN_VELOCITIES
   v = WDM_V0 * get_fermi_dirac_vel();
+#else
+  v = WDM_V0 * get_gaussian_vel();
+#endif
 
   phi = 2 * M_PI * drand48();
   theta = acos(2 * drand48() - 1);

@@ -1,9 +1,9 @@
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include "allvars.h"
-#include "proto.h"
+#include <math.h>
 
+#include "allvars.h"
+#include "read_param.h"
 
 void read_parameterfile(char *fname)
 {
@@ -82,6 +82,10 @@ void read_parameterfile(char *fname)
 
   strcpy(tag[nt], "GlassTileFac");
   addr[nt] = &GlassTileFac;
+  id[nt++] = INT;
+
+  strcpy(tag[nt], "GlassTileFacSample");
+  addr[nt] = &GlassTileFacSample;
   id[nt++] = INT;
 
   strcpy(tag[nt], "Seed");

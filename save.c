@@ -3,9 +3,11 @@
 
 #include "allvars.h"
 #include "proto.h"
+#include "power.h"
+#include "save.h"
 
-
-
+void save_local_data(void)__attribute__((visibility ("hidden")));
+int compare_type(const void *a, const void *b)__attribute__((visibility ("hidden")));
 
 void write_particle_data(void)
 {
@@ -15,10 +17,10 @@ void write_particle_data(void)
     printf("\nwriting initial conditions... \n");
 
 
-  if((NTask < NumFilesWrittenInParallel))
+  if(NTask < NumFilesWrittenInParallel)
     {
       printf
-	("Fatal error.\nNumber of processors must be a smaller or equal than `NumFilesWrittenInParallel'.\n");
+		("Fatal error.\nNumber of processors must be a smaller or equal than `NumFilesWrittenInParallel'.\n");
       FatalError(24131);
     }
 
@@ -34,8 +36,8 @@ void write_particle_data(void)
   for(groupTask = 0; groupTask < nprocgroup; groupTask++)
     {
       if(ThisTask == (masterTask + groupTask))	/* ok, it's this processor's turn */
-	save_local_data();
-
+		save_local_data();
+	  
       /* wait inside the group */
       MPI_Barrier(MPI_COMM_WORLD);
     }
@@ -52,21 +54,26 @@ void save_local_data(void)
 #define BUFFER 10
   size_t bytes;
   float *block;
-  int *blockid;
+#ifdef USE_64BITID
   long long *blocklongid;
-  int blockmaxlen, maxidlen, maxlongidlen;
-  int4byte dummy;
+#else
+  int *blockid;
+#endif
+  
+  int blockmaxlen, maxlongidlen;
+  int32_t dummy;
   FILE *fd;
   char buf[300];
   int i, k, pc;
+#ifdef PRODUCEGAS
   double meanspacing, shift_gas, shift_dm;
-
+#endif
 
   if(NumPart == 0)
     return;
 
   if(NTaskWithN > 1)
-    sprintf(buf, "%s/%s.%d", OutputDir, FileBase, ThisTask);
+    sprintf(buf, "%s/%s.%d", OutputDir, FileBase, ThisTaskFileNumber);
   else
     sprintf(buf, "%s/%s", OutputDir, FileBase);
 
@@ -88,8 +95,15 @@ void save_local_data(void)
 #ifdef MULTICOMPONENTGLASSFILE
   qsort(P, NumPart, sizeof(struct part_data), compare_type);  /* sort particles by type, because that's how they should be stored in a gadget binary file */
 
+#if 1
+  /* Code from Greg Poole for generating consistent particle IDs across different resolution simulations */
+  for(i = 0; i < 3; i++)
+    header.npartTotal[i] = header1.npartTotal[i + 1] * (GlassTileFac/GlassTileFacSample) * (GlassTileFac/GlassTileFacSample) * (GlassTileFac/GlassTileFacSample);
+#else
+  /* Original code from 2LPTic*/
   for(i = 0; i < 3; i++)
     header.npartTotal[i] = header1.npartTotal[i + 1] * GlassTileFac * GlassTileFac * GlassTileFac;
+#endif
 
   for(i = 0; i < NumPart; i++)
     header.npart[P[i].Type]++;
@@ -101,7 +115,7 @@ void save_local_data(void)
   if(header.npartTotal[1])
     header.mass[1] =
       (Omega - OmegaBaryon - OmegaDM_2ndSpecies) * 3 * Hubble * Hubble / (8 * PI * G) * pow(Box,
-											    3) /
+																							3) /
       (header.npartTotal[1]);
 
   if(header.npartTotal[2])
@@ -113,7 +127,7 @@ void save_local_data(void)
 
   header.npart[1] = NumPart;
   header.npartTotal[1] = TotNumPart;
-  //MS - commented out - who knows when this is from. The new Gadget versions expect to see the HighWord to be set
+  //MS - commented out - this is for older versions of Gadget. The new vanilla Gadget versions expect to see the HighWord to be set
   /* header.npartTotal[2] = (TotNumPart >> 32); */
   header.npartTotalHighWord[1] = (TotNumPart >> 32);
   header.mass[1] = (Omega) * 3 * Hubble * Hubble / (8 * PI * G) * pow(Box, 3) / TotNumPart;
@@ -126,6 +140,12 @@ void save_local_data(void)
 #endif
 #endif
 
+#ifndef USE_64BITID
+  if(TotNumPart > INT_MAX) {
+	printf("On task %d: Can not represent particles ID = %lld with 32 bit integers. Enabled the compile time options USE_64BITID\n", ThisTask, TotNumPart);
+	FatalError(10000);
+  }
+#endif
 
   header.time = InitTime;
   header.redshift = 1.0 / InitTime - 1;
@@ -152,24 +172,29 @@ void save_local_data(void)
   my_fwrite(&header, sizeof(header), 1, fd);
   my_fwrite(&dummy, sizeof(dummy), 1, fd);
 
-
+#ifdef PRODUCEGAS
   meanspacing = Box / pow(TotNumPart, 1.0 / 3);
   shift_gas = -0.5 * (Omega - OmegaBaryon) / (Omega) * meanspacing;
   shift_dm = +0.5 * OmegaBaryon / (Omega) * meanspacing;
+#endif
 
-
-  if(!(block = malloc(bytes = BUFFER * 1024 * 1024)))
+  
+  bytes = BUFFER * 1024 * 1024;
+  block = malloc(bytes);
+  if(block == NULL)
     {
       printf("failed to allocate memory for `block' (%g bytes).\n", (double)bytes);
       FatalError(24);
     }
 
   blockmaxlen = bytes / (3 * sizeof(float));
-
-  blockid = (int *) block;
+  maxlongidlen = bytes / sizeof(long long);
+#ifdef USE_64BITID
   blocklongid = (long long *) block;
-  maxidlen = bytes / (sizeof(int));
-  maxlongidlen = bytes / (sizeof(long long));
+#else
+  blockid = (int *) block;
+#endif
+
 
   /* write coordinates */
   dummy = sizeof(float) * 3 * NumPart;
@@ -180,42 +205,44 @@ void save_local_data(void)
   for(i = 0, pc = 0; i < NumPart; i++)
     {
       for(k = 0; k < 3; k++)
-	{
-	  block[3 * pc + k] = P[i].Pos[k];
+		{
+		  block[3 * pc + k] = P[i].Pos[k];
 #ifdef  PRODUCEGAS
-	  block[3 * pc + k] = periodic_wrap(P[i].Pos[k] + shift_gas);
+		  block[3 * pc + k] = periodic_wrap(P[i].Pos[k] + shift_gas);
 #endif
-	}
+		}
 
       pc++;
 
       if(pc == blockmaxlen)
-	{
-	  my_fwrite(block, sizeof(float), 3 * pc, fd);
-	  pc = 0;
-	}
+		{
+		  my_fwrite(block, sizeof(float), 3 * pc, fd);
+		  pc = 0;
+		}
     }
   if(pc > 0)
     my_fwrite(block, sizeof(float), 3 * pc, fd);
+
 #ifdef  PRODUCEGAS
   for(i = 0, pc = 0; i < NumPart; i++)
     {
       for(k = 0; k < 3; k++)
-	{
-	  block[3 * pc + k] = periodic_wrap(P[i].Pos[k] + shift_dm);
-	}
+		{
+		  block[3 * pc + k] = periodic_wrap(P[i].Pos[k] + shift_dm);
+		}
 
       pc++;
 
       if(pc == blockmaxlen)
-	{
-	  my_fwrite(block, sizeof(float), 3 * pc, fd);
-	  pc = 0;
-	}
+		{
+		  my_fwrite(block, sizeof(float), 3 * pc, fd);
+		  pc = 0;
+		}
     }
   if(pc > 0)
     my_fwrite(block, sizeof(float), 3 * pc, fd);
 #endif
+
   my_fwrite(&dummy, sizeof(dummy), 1, fd);
 
 
@@ -229,25 +256,25 @@ void save_local_data(void)
   for(i = 0, pc = 0; i < NumPart; i++)
     {
       for(k = 0; k < 3; k++)
-	block[3 * pc + k] = P[i].Vel[k];
+		block[3 * pc + k] = P[i].Vel[k];
 
 #ifdef MULTICOMPONENTGLASSFILE
       if(WDM_On == 1 && WDM_Vtherm_On == 1 && P[i].Type == 1)
-	add_WDM_thermal_speeds(&block[3 * pc]);
+		add_WDM_thermal_speeds(&block[3 * pc]);
 #else
 #ifndef PRODUCEGAS
       if(WDM_On == 1 && WDM_Vtherm_On == 1)
-	add_WDM_thermal_speeds(&block[3 * pc]);
+		add_WDM_thermal_speeds(&block[3 * pc]);
 #endif
 #endif
 
       pc++;
 
       if(pc == blockmaxlen)
-	{
-	  my_fwrite(block, sizeof(float), 3 * pc, fd);
-	  pc = 0;
-	}
+		{
+		  my_fwrite(block, sizeof(float), 3 * pc, fd);
+		  pc = 0;
+		}
     }
   if(pc > 0)
     my_fwrite(block, sizeof(float), 3 * pc, fd);
@@ -255,18 +282,18 @@ void save_local_data(void)
   for(i = 0, pc = 0; i < NumPart; i++)
     {
       for(k = 0; k < 3; k++)
-	block[3 * pc + k] = P[i].Vel[k];
+		block[3 * pc + k] = P[i].Vel[k];
 
       if(WDM_On == 1 && WDM_Vtherm_On == 1)
-	add_WDM_thermal_speeds(&block[3 * pc]);
+		add_WDM_thermal_speeds(&block[3 * pc]);
 
       pc++;
 
       if(pc == blockmaxlen)
-	{
-	  my_fwrite(block, sizeof(float), 3 * pc, fd);
-	  pc = 0;
-	}
+		{
+		  my_fwrite(block, sizeof(float), 3 * pc, fd);
+		  pc = 0;
+		}
     }
   if(pc > 0)
     my_fwrite(block, sizeof(float), 3 * pc, fd);
@@ -275,71 +302,81 @@ void save_local_data(void)
 
 
   /* write particle ID */
-#ifdef NO64BITID
-  dummy = sizeof(int) * NumPart;
-#else
+#ifdef USE_64BITID
   dummy = sizeof(long long) * NumPart;
+#else
+  dummy = sizeof(int) * NumPart;
 #endif
+
+
 #ifdef  PRODUCEGAS
   dummy *= 2;
 #endif
   my_fwrite(&dummy, sizeof(dummy), 1, fd);
   for(i = 0, pc = 0; i < NumPart; i++)
     {
-#ifdef NO64BITID
-      blockid[pc] = P[i].ID;
-#else
+#ifdef USE_64BITID
       blocklongid[pc] = P[i].ID;
+#else
+      blockid[pc] = P[i].ID;
 #endif
 
       pc++;
 
       if(pc == maxlongidlen)
-	{
-#ifdef NO64BITID
-	  my_fwrite(blockid, sizeof(int), pc, fd);
+		{
+#ifdef USE_64BITID
+		  my_fwrite(blocklongid, sizeof(long long), pc, fd);
 #else
-	  my_fwrite(blocklongid, sizeof(long long), pc, fd);
+		  my_fwrite(blockid, sizeof(int), pc, fd);
 #endif
-	  pc = 0;
-	}
+		  pc = 0;
+		}
     }
   if(pc > 0)
     {
-#ifdef NO64BITID
-      my_fwrite(blockid, sizeof(int), pc, fd);
-#else
+#ifdef USE_64BITID
       my_fwrite(blocklongid, sizeof(long long), pc, fd);
+#else
+	  my_fwrite(blockid, sizeof(int), pc, fd);
 #endif
     }
 
 #ifdef PRODUCEGAS
   for(i = 0, pc = 0; i < NumPart; i++)
     {
-#ifdef NO64BITID
-      blockid[pc] = P[i].ID + TotNumPart;
-#else
+#ifdef USE_64BITID
       blocklongid[pc] = P[i].ID + TotNumPart;
+#else
+	  /*Check that IDs can fit. Both P[i].ID and TotNumPart are 64 bit integers
+		so they should not overflow. */
+	  if((P[i].ID + TotNumPart) > INT_MAX) {
+		printf("On task %d: Can not represent %d particle ID = %lld with 32 bit integers. Enabled the compile time options USE_64BITID\n", 
+			   ThisTask, i, P[i].ID);
+		FatalError(10000);
+	  }
+	  
+      blockid[pc] = P[i].ID + TotNumPart;
 #endif
 
       pc++;
 
       if(pc == maxlongidlen)
-	{
-#ifdef NO64BITID
-	  my_fwrite(blockid, sizeof(int), pc, fd);
+		{
+#ifdef USE_64BITID
+		  my_fwrite(blocklongid, sizeof(long long), pc, fd);
 #else
-	  my_fwrite(blocklongid, sizeof(long long), pc, fd);
+		  my_fwrite(blockid, sizeof(int), pc, fd);
 #endif
-	  pc = 0;
-	}
+		  pc = 0;
+		}
     }
   if(pc > 0)
     {
-#ifdef NO64BITID
-      my_fwrite(blockid, sizeof(int), pc, fd);
-#else
+#ifdef USE_64BITID
       my_fwrite(blocklongid, sizeof(long long), pc, fd);
+#else
+      my_fwrite(blockid, sizeof(int), pc, fd);
 #endif
     }
 #endif
@@ -361,10 +398,10 @@ void save_local_data(void)
       pc++;
 
       if(pc == blockmaxlen)
-	{
-	  my_fwrite(block, sizeof(float), pc, fd);
-	  pc = 0;
-	}
+		{
+		  my_fwrite(block, sizeof(float), pc, fd);
+		  pc = 0;
+		}
     }
   if(pc > 0)
     my_fwrite(block, sizeof(float), pc, fd);
@@ -380,19 +417,19 @@ void save_local_data(void)
       my_fwrite(&dummy, sizeof(dummy), 1, fd);
 
       for(i = 0, pc = 0; i < header.npart[0]; i++)
-	{
-	  block[pc] = 0;
+		{
+		  block[pc] = 0;
 
-	  pc++;
+		  pc++;
 
-	  if(pc == blockmaxlen)
-	    {
-	      my_fwrite(block, sizeof(float), pc, fd);
-	      pc = 0;
-	    }
-	}
+		  if(pc == blockmaxlen)
+			{
+			  my_fwrite(block, sizeof(float), pc, fd);
+			  pc = 0;
+			}
+		}
       if(pc > 0)
-	my_fwrite(block, sizeof(float), pc, fd);
+		my_fwrite(block, sizeof(float), pc, fd);
       my_fwrite(&dummy, sizeof(dummy), 1, fd);
     }
 #endif

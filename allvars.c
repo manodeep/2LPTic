@@ -15,12 +15,10 @@ int Nmesh, Nsample;
 
 long long IDStart;
 
-
-
 char GlassFile[500];
 char FileWithInputSpectrum[500];
 
-int GlassTileFac;
+int GlassTileFac,GlassTileFacSample;
 
 double Box;
 int Seed;
@@ -46,7 +44,7 @@ char OutputDir[100], FileBase[100];
 int NumFilesWrittenInParallel;
 
 
-int ThisTask, NTask;
+int ThisTask, ThisTaskFileNumber, NTask;
 
 int Local_nx, Local_x_start;
 
