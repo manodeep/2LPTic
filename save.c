@@ -95,7 +95,7 @@ void save_local_data(void)
 #ifdef MULTICOMPONENTGLASSFILE
   qsort(P, NumPart, sizeof(struct part_data), compare_type);  /* sort particles by type, because that's how they should be stored in a gadget binary file */
 
-#if 1
+#if defined(PRODUCE_CONSISTENT_IDS)
   /* Code from Greg Poole for generating consistent particle IDs across different resolution simulations */
   for(i = 0; i < 3; i++)
     header.npartTotal[i] = header1.npartTotal[i + 1] * (GlassTileFac/GlassTileFacSample) * (GlassTileFac/GlassTileFacSample) * (GlassTileFac/GlassTileFacSample);

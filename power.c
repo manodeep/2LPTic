@@ -111,7 +111,7 @@ void read_power_table(void)
   FILE *fd;
   char buf[MAXFILENAMELEN];
   double k, p;
-#ifdef USE_CAMB        // Addition by CBP -- Use Camb transfer function
+#ifdef USE_CAMB        // Addition by Greg Poole (and Paul Geil) -- Use Camb transfer function
   double pcdm, pbar;   // Allow for individual transfer functions for CDM and Baryons
 #endif
   double kmin,kmax;
@@ -133,7 +133,7 @@ void read_power_table(void)
   NPowerTable = 0;
   do
     {
-#ifndef USE_CAMB   // Addition by CBP -- Use Camb transfer function
+#ifndef USE_CAMB   // Addition by Greg Poole (and Paul Geil) -- Use Camb transfer function
       if(fscanf(fd, " %lg %lg ", &k, &p) == 2)
 #else
     /* Format is

@@ -6,6 +6,7 @@
 #include "allvars.h"
 #include "proto.h"
 #include "save.h"
+#include "read_glass.h"
 
 int find_files(char *fname);
 
@@ -132,7 +133,7 @@ void read_glass(char *fname)
       }
 #endif
 
-#if 1
+#if defined(PRODUCE_CONSISTENT_IDS)
   /* Code from Greg Poole to generate same IDs across different simulations. 
 	 Makes matching halos trivial afterwards. */
   for(i = 0; i < GlassTileFac; i++){
@@ -190,7 +191,7 @@ void read_glass(char *fname)
 
   NumPart = npart_Task[ThisTask];
 
-#if 1
+#if defined(PRODUCE_CONSISTENT_IDS)
   /* Code from Greg Poole to generate consistent IDs across
 	 simulations of different resolutions */
   ThisTaskFileNumber=0;
@@ -246,7 +247,7 @@ void read_glass(char *fname)
 
   count = 0;
 
-#if 1
+#if defined(PRODUCE_CONSISTENT_IDS)
   /* Code from Greg Poole to generate consistent particle IDs 
    across simulations of different resolutions */
   long long GTF1=(long long)GlassTileFac;
@@ -301,7 +302,7 @@ void read_glass(char *fname)
 	}
   }
 
-#else  //else for #if 1 ->never compiles
+#else  //else for PRODUCE_CONSISTENT_IDS
 
   /* Alternate code from old 2LPTic */
   IDStart = 1;
