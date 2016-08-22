@@ -138,9 +138,11 @@ void displacement_fields(void)
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
 
   gsl_rng_set(random_generator, Seed);
-
-  if(!(seedtable = malloc(Nmesh * Nmesh * sizeof(unsigned int))))
+  
+  seedtable = malloc(Nmesh * Nmesh * sizeof(unsigned int));
+  if(seedtable == NULL) {
     FatalError(4);
+  }
 
   for(i = 0; i < Nmesh / 2; i++)
     {
@@ -171,13 +173,13 @@ void displacement_fields(void)
 
 
 
-  for(axes=0,bytes=0; axes < 3; axes++)
+  for(axes=0; axes < 3; axes++)
     {
-      cdisp[axes] = (fftw_complex *) malloc(bytes += sizeof(fftw_real) * TotalSizePlusAdditional);
+	  bytes = sizeof(fftw_real) * TotalSizePlusAdditional;
+      cdisp[axes] = (fftw_complex *) malloc(bytes);
+	  ASSERT_ALLOC(cdisp[axes]);
       disp[axes] = (fftw_real *) cdisp[axes];
     }
-
-  ASSERT_ALLOC(cdisp[0] && cdisp[1] && cdisp[2]);
 
 
 #if defined(MULTICOMPONENTGLASSFILE) && defined(DIFFERENT_TRANSFER_FUNC)
@@ -349,7 +351,8 @@ void displacement_fields(void)
 
       for(i = 0; i < 6; i++)
 		{
-		  cdigrad[i] = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+		  bytes = sizeof(fftw_real) * TotalSizePlusAdditional;
+		  cdigrad[i] = (fftw_complex *) malloc(bytes);
 		  digrad[i] = (fftw_real *) cdigrad[i];
 		  ASSERT_ALLOC(cdigrad[i]);
 		}
@@ -707,7 +710,9 @@ void initialize_ffts(void)
   rfftwnd_mpi_local_sizes(Forward_plan, &Local_nx, &Local_x_start,
 						  &local_ny_after_transpose, &local_y_start_after_transpose, &total_size);
 
-  Local_nx_table = malloc(sizeof(int) * NTask);
+  bytes = sizeof(int) * NTask;
+  Local_nx_table = malloc(bytes);
+  ASSERT_ALLOC(Local_nx_table);
   MPI_Allgather(&Local_nx, 1, MPI_INT, Local_nx_table, 1, MPI_INT, MPI_COMM_WORLD);
 
   if(ThisTask == 0)
@@ -717,9 +722,11 @@ void initialize_ffts(void)
       fflush(stdout);
     }
 
-
-  Slab_to_task = malloc(sizeof(int) * Nmesh);
-  slab_to_task_local = malloc(sizeof(int) * Nmesh);
+  bytes = sizeof(int) * Nmesh;
+  Slab_to_task = malloc(bytes);
+  ASSERT_ALLOC(Slab_to_task);
+  slab_to_task_local = malloc(bytes);
+  ASSERT_ALLOC(slab_to_task_local);
 
   for(i = 0; i < Nmesh; i++)
     slab_to_task_local[i] = 0;
@@ -741,10 +748,10 @@ void initialize_ffts(void)
 
   Workspace = (fftw_real *) malloc(bytes = sizeof(fftw_real) * total_size);
 
-  ASSERT_ALLOC(Workspace)
+  ASSERT_ALLOC(Workspace);
 
-	//Cdata = (fftw_complex *) Disp;	/* transformed array */
-	}
+  //Cdata = (fftw_complex *) Disp;	/* transformed array */
+}
 
 
 
