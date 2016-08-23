@@ -22,11 +22,9 @@ Pre-requisites
 Compilation
 -----------
 
-1. Setup the ``Makefile`` options according to the simulation IC. 
-Default options are matched to running a single-species 
-dark matter only cosmological simulation. 
-2. Check the paths to ``MPI``, ``FFTW`` and ``GSL`` libraries.
-3. Typing ``make`` should generate the executable. 
+1. Setup the ``Makefile`` options according to the simulation IC. Default options are matched to running a single-species dark matter only cosmological simulation. 
+2. Check the paths to ``MPI``, ``FFTW`` and ``GSL`` libraries
+3. Typing ``make`` should generate the executable 
 
 Generating Consistent Particle IDs
 ----------------------------------
@@ -48,11 +46,8 @@ set during compilation).
 Running 
 =======
 
-1. Edit the parameter file. See example parameter file provided in
-`example.params <example.params>`__
-2. Launch the MPI process ``mpirun -np Ncpus ./2LPTic simulation.param``
-(refer to your computing cluster documentation for submitting and 
-running jobs)
+1. Edit the parameter file. See example parameter file provided in `example.params <example.params>`__
+2. Launch the MPI process ``mpirun -np Ncpus ./2LPTic simulation.param`` (refer to your computing cluster documentation for submitting and running jobs)
 
 
 Author
