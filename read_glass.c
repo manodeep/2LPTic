@@ -166,7 +166,7 @@ void read_glass(char *fname)
 			 ThisTask, this_npart * sqr_GlassTileFac, NTask);
 	  FatalError(3142);
 	}
-	npart_Task[i] = this_npart;
+	npart_Task[i] = this_npart * sqr_GlassTileFac;
   }
   
 #else
@@ -197,7 +197,7 @@ void read_glass(char *fname)
 			 ThisTask, this_npart * sqr_GlassTileFac);
 	  FatalError(3143);
 	}
-	npart_Task[i] = this_npart;
+	npart_Task[i] = this_npart * sqr_GlassTileFac;
   }
 
 #endif
