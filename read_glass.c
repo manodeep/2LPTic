@@ -2,6 +2,7 @@
 #include <math.h>
 #include <mpi.h>
 #include <inttypes.h>
+#include <limits.h>
 
 #include "allvars.h"
 #include "proto.h"
@@ -141,51 +142,64 @@ void read_glass(char *fname)
 	 Makes matching halos trivial afterwards. */
   for(i = 0; i < GlassTileFac; i++){
     if(i%GlassTileFacSample==0){
-	  for(j = 0; j < GlassTileFac; j++){
-		if(j%GlassTileFacSample==0){
-		  for(k = 0; k < GlassTileFac; k++){
-			if(k%GlassTileFacSample==0){
-			  for(type = 0, n = 0; type < 6; type++)
-				{
-				  for(m = 0; m < header1.npartTotal[type]; m++, n++)
-					{
-					  x = pos[3 * n] / header1.BoxSize * (Box / GlassTileFac) + i * (Box / GlassTileFac);
-
-					  slab = x / Box * Nmesh;
-					  if(slab >= Nmesh)
-						slab = Nmesh - 1;
-
-					  npart_Task[Slab_to_task[slab]] += 1;
-					}
-				}
+	  for(type = 0, n = 0; type < 6; type++)
+		{
+		  for(m = 0; m < header1.npartTotal[type]; m++, n++)
+			{
+			  x = pos[3 * n] / header1.BoxSize * (Box / GlassTileFac) + i * (Box / GlassTileFac);
+			  
+			  slab = x / Box * Nmesh;
+			  if(slab >= Nmesh)
+				slab = Nmesh - 1;
+			  
+			  npart_Task[Slab_to_task[slab]] += 1;
 			}
-		  }
 		}
-	  }
 	}
   }
 
+  const int64_t sqr_GlassTileFac = GlassTileFac/GlassTileFacSample * GlassTileFac/GlassTileFacSample;
+  for(i=0;i<NTask;i++) {
+	const int64_t this_npart = npart_Task[i];
+	if(this_npart * sqr_GlassTileFac > INT_MAX) {
+	  printf("On Task %d number of particles = %"PRId64" exceeds INT_MAX. Please increase the number of cpus (currently running on %d cpus) and rerun..aborting\n",
+			 ThisTask, this_npart * sqr_GlassTileFac, NTask);
+	  FatalError(3142);
+	}
+	npart_Task[i] = this_npart;
+  }
+  
 #else
 
   /* Old code from standard 2LPTic */
   for(i = 0; i < GlassTileFac; i++)
-    for(j = 0; j < GlassTileFac; j++)
-      for(k = 0; k < GlassTileFac; k++)
+	{
+	  for(type = 0, n = 0; type < 6; type++)
 		{
-		  for(type = 0, n = 0; type < 6; type++)
+		  for(m = 0; m < header1.npartTotal[type]; m++, n++)
 			{
-			  for(m = 0; m < header1.npartTotal[type]; m++, n++)
-				{
-				  x = pos[3 * n] / header1.BoxSize * (Box / GlassTileFac) + i * (Box / GlassTileFac);
-
-				  slab = x / Box * Nmesh;
-				  if(slab >= Nmesh)
-					slab = Nmesh - 1;
-
-				  npart_Task[Slab_to_task[slab]] += 1;
-				}
+			  x = pos[3 * n] / header1.BoxSize * (Box / GlassTileFac) + i * (Box / GlassTileFac);
+			  
+			  slab = x / Box * Nmesh;
+			  if(slab >= Nmesh)
+				slab = Nmesh - 1;
+			  
+			  npart_Task[Slab_to_task[slab]] += 1;
 			}
 		}
+	}
+
+  const int64_t sqr_GlassTileFac = GlassTileFac * GlassTileFac;
+  for(i=0;i<NTask;i++) {
+	const int64_t this_npart = npart_Task[i];
+	if(this_npart * sqr_GlassTileFac > INT_MAX) {
+	  printf("On Task %d number of particles = %"PRId64" exceeds INT_MAX. Please increase the number of cpus and rerun..aborting\n",
+			 ThisTask, this_npart * sqr_GlassTileFac);
+	  FatalError(3143);
+	}
+	npart_Task[i] = this_npart;
+  }
+
 #endif
 
 
