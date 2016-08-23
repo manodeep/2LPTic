@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <limits.h>
 
 #include <mpi.h>
 #include <drfftw_mpi.h>
@@ -14,21 +17,6 @@
 #include "power.h"
 #include "save.h"
 #include "proto.h"
-
-#define ASSERT_ALLOC(cond) {                                                                                  \
-   if(cond)                                                                                                   \
-    {                                                                                                         \
-      if(ThisTask == 0)                                                                                       \
-	printf("\nallocated %g Mbyte on Task %d\n", bytes / (1024.0 * 1024.0), ThisTask);                     \
-    }                                                                                                         \
-  else                                                                                                        \
-    {                                                                                                         \
-      printf("failed to allocate %g Mbyte on Task %d\n", bytes / (1024.0 * 1024.0), ThisTask);                \
-      printf("bailing out.\n");                                                                               \
-      FatalError(1);                                                                                          \
-    }                                                                                                         \
-}
-
 
 int main(int argc, char **argv)
 {
@@ -50,6 +38,16 @@ int main(int argc, char **argv)
   read_parameterfile(argv[1]);
 
   set_units();
+
+  /* Check if the particle load is too large for the current number of 
+	 of tasks to handle (check for possible INT overflow) */
+  const int64_t mpi_nitems = sizeof(fftw_real) * Nmesh * (2 * (Nmesh / 2 + 1));
+  if(mpi_nitems > INT_MAX) {
+	fprintf(stderr,"Number of items to send/receive = %"PRId64" in MPI mode will overflow int. Requires massive re-write of entire code-base\n",
+			mpi_nitems);
+	FatalError(5);
+  }
+  
 
   initialize_powerspectrum();
 
@@ -87,7 +85,8 @@ void displacement_fields(void)
   MPI_Request request;
   MPI_Status status;
   gsl_rng *random_generator;
-  int i, j, k, ii, jj, kk, axes;
+  int ii, jj, kk, axes;
+  int64_t i,j,k;
   int n;
   int sendTask, recvTask;
   double fac, vel_prefac, vel_prefac2;
@@ -537,7 +536,7 @@ void displacement_fields(void)
 						sizeof(fftw_real) * Nmesh * (2 * (Nmesh / 2 + 1)),
 						MPI_BYTE, recvTask, 10, MPI_COMM_WORLD, &request);
 	      
-			  MPI_Recv(&(disp[axes][(Local_nx * Nmesh) * (2 * (Nmesh / 2 + 1))]),
+			  MPI_Recv(&(disp[axes][((int64_t) Local_nx * Nmesh) * (2 * (Nmesh / 2 + 1))]),
 					   sizeof(fftw_real) * Nmesh * (2 * (Nmesh / 2 + 1)),
 					   MPI_BYTE, sendTask, 10, MPI_COMM_WORLD, &status);
 	      
@@ -549,7 +548,7 @@ void displacement_fields(void)
 						sizeof(fftw_real) * Nmesh * (2 * (Nmesh / 2 + 1)),
 						MPI_BYTE, recvTask, 10, MPI_COMM_WORLD, &request);
 	      
-			  MPI_Recv(&(disp2[axes][(Local_nx * Nmesh) * (2 * (Nmesh / 2 + 1))]),
+			  MPI_Recv(&(disp2[axes][((int64_t) Local_nx * Nmesh) * (2 * (Nmesh / 2 + 1))]),
 					   sizeof(fftw_real) * Nmesh * (2 * (Nmesh / 2 + 1)),
 					   MPI_BYTE, sendTask, 10, MPI_COMM_WORLD, &status);
 	      

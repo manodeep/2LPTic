@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
-#include <stdint.h>
+#include <inttypes.h>
 
 #include "allvars.h"
 #include "proto.h"
@@ -12,7 +12,8 @@ int find_files(char *fname);
 
 void read_glass(char *fname)
 {
-  int i, j, k, n, slab, count, type;
+  int64_t i, j, k, n;
+  int slab, count, type;
   uint32_t dummy, dummy2, m;
   float *pos = 0;
   float x, y, z;
@@ -71,7 +72,7 @@ void read_glass(char *fname)
 				Nglass += header1.npartTotal[k];
 
 			  printf("\nNglass= %d\n\n", Nglass);
-			  pos = (float *) malloc(sizeof(float) * Nglass * 3);
+			  pos = malloc(sizeof(*pos) * Nglass * 3);
 
 			  if(pos == NULL)
 				{
@@ -101,7 +102,7 @@ void read_glass(char *fname)
 
   if(ThisTask != 0)
     {
-      pos = (float *) malloc(sizeof(float) * Nglass * 3);
+      pos = malloc(sizeof(*pos) * Nglass * 3);
 
       if(pos == NULL)
 		{
@@ -113,8 +114,10 @@ void read_glass(char *fname)
 
   MPI_Bcast(&pos[0], sizeof(float) * Nglass * 3, MPI_BYTE, 0, MPI_COMM_WORLD);
 
-
-  npart_Task = malloc(sizeof(int) * NTask);
+  bytes = sizeof(int) * NTask;
+  npart_Task = malloc(bytes);
+  ASSERT_ALLOC(npart_Task);
+  
 
   for(i = 0; i < NTask; i++)
     npart_Task[i] = 0;
@@ -220,7 +223,7 @@ void read_glass(char *fname)
   if(ThisTask == 0)
     {
       for(i = 0; i < NTask; i++)
-		printf("%d particles on task=%d  (slabs=%d)\n", npart_Task[i], i, Local_nx_table[i]);
+		printf("%d particles on task=%"PRId64"  (slabs=%d)\n", npart_Task[i], i, Local_nx_table[i]);
 
       printf("\nTotal number of particles  = %d%09d\n\n",
 			 (int) (TotNumPart / 1000000000), (int) (TotNumPart % 1000000000));
