@@ -745,7 +745,7 @@ void initialize_ffts(void)
 
   //Disp = (fftw_real *) malloc(bytes = sizeof(fftw_real) * (total_size + additional));
 
-  Workspace = (fftw_real *) malloc(bytes = sizeof(fftw_real) * total_size);
+  Workspace = (fftw_real *) malloc(bytes = sizeof(fftw_real) * (total_size + additional));
 
   ASSERT_ALLOC(Workspace);
 
