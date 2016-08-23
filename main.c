@@ -97,7 +97,7 @@ void displacement_fields(void)
   double dis, dis2, maxdisp, max_disp_glob;
   unsigned int *seedtable;
 
-  unsigned int bytes;
+  size_t bytes;
   double nmesh3;
   int coord;
   fftw_complex *(cdisp[3]), *(cdisp2[3]) ; /* ZA and 2nd order displacements */

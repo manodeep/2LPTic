@@ -31,7 +31,7 @@ OPT += -DUSE_CAMB                     # Allow input tabulated transfer function 
 
 OPTIONS :=  $(OPT)
 CC       :=  mpicc
-OPTIMIZE :=  -O3 -march=native
+OPTIMIZE :=  -O3 -march=native -m64
 
 # Set for TACC Stampede.
 GSL_INCL :=  -isystem$(TACC_GSL_INC) -isystem$(TACC_GSL_INC)/gsl

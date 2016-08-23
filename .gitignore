@@ -21,6 +21,7 @@
 *.dylib
 
 # Executables
+2LPTic
 *.exe
 *.out
 *.app
