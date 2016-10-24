@@ -18,7 +18,7 @@ long long IDStart;
 char GlassFile[500];
 char FileWithInputSpectrum[500];
 
-int GlassTileFac,GlassTileFacSample;
+int GlassTileFac,GlassTileFacSampleNumerator,GlassTileFacSampleDenom;
 
 double Box;
 int Seed;

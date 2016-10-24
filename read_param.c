@@ -84,8 +84,12 @@ void read_parameterfile(char *fname)
   addr[nt] = &GlassTileFac;
   id[nt++] = INT;
 
-  strcpy(tag[nt], "GlassTileFacSample");
-  addr[nt] = &GlassTileFacSample;
+  strcpy(tag[nt], "GlassTileFacSampleNumerator");
+  addr[nt] = &GlassTileFacSampleNumerator;
+  id[nt++] = INT;
+
+  strcpy(tag[nt], "GlassTileFacSampleDenom");
+  addr[nt] = &GlassTileFacSampleDenom;
   id[nt++] = INT;
 
   strcpy(tag[nt], "Seed");

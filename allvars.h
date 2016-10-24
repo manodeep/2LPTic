@@ -46,7 +46,7 @@ extern long long IDStart;
 extern char     GlassFile[500]; 
 extern char     FileWithInputSpectrum[500];
 
-extern int      GlassTileFac,GlassTileFacSample; 
+extern int      GlassTileFac,GlassTileFacSampleNumerator, GlassTileFacSampleDenom; 
 
 extern double   Box;
 extern int Seed;
