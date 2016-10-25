@@ -37,17 +37,27 @@ Generating Consistent Particle IDs
 
 If you are running convergence tests, then the particle IDs for
 the lower resolution simulation can be sampled from the particle IDs
-of the highest resolution simulation you want to compare to. For instance,
-if you want to run a ``1024^3`` simulation with particle IDs matched to
-a ``2048^3`` simulation, then set ``Nmesh=2048``, ``Nsample=1024`` and
-``GlassTileFacSample=2``. The generated IDs will not be contiguous 
-anymore but the particle in the same spatial location should get 
+of the highest resolution simulation you want to compare to. The generated IDs 
+will not be contiguous anymore but the particle in the same spatial location should get 
 an identical ID as the particle in the hi-res simulation. Since the particle
 ID is essentially set by the hi-res simulation, the low-res simulation 
 might require 64bit IDs just to store consistent IDs. The code will check
 at runtime if the generated particle IDs are too large to fit into 32bit
 integers (only relevant when ``USE_64BITID`` Makefile option is not 
-set during compilation).
+set during compilation). 
+
+The implementation requires two integers, ``GlassTileFacSampleNumerator`` and 
+``GlassTileFacSampleDenom``, to be specified in the parameter file. The final 
+number of particles is set by **choose ``GlassTileFacSampleNumerator`` particles out
+of ``GlassTileFacSampleDenom`` hi-res particles**. 
+
+* To generate a ``1024^3`` subsample from a ``3072^3`` hi-res, set ``Nmesh=3072``, ``Nsample=1024``, ``GlassTileFac=3072``, ``GlassTileFacSampleNumerator=1`` and ``GlassTileFacSampleDenom=3``. 
+
+
+* To generate a ``2048^3`` subsample from a ``3072^3`` hi-res, set ``Nmesh=3072``, ``Nsample=2048``, ``GlassTileFac=3072``, ``GlassTileFacSampleNumerator=2`` and ``GlassTileFacSampleDenom=3``. 
+
+**NOTE:** The previous examples assume that there is only one particle in the glass file; if that is not your case, then reduce ``GlassTileFac`` by the number of particles in the glass file. ``Nparticles_in_glass_file * GlassTileFac`` should equal ``TotNumPart^(1/3)`` in the hi-res simulation.
+
 
 Running 
 =======
