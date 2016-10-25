@@ -13,7 +13,7 @@ Improvements
 4. Can generate consistent particle IDs across simulations of different resolutions (contribution from Greg Poole)
 
 **Note** this version produces a header compatible with standard public Gadget2. In particular, 
-the number of particles in excess of INT_MAX (~2e9) is stored in ``npartTotalHighWord`` in the header, rather than npartTotal[2].
+the number of particles in excess of INT_MAX (~2e9) is stored in ``npartTotalHighWord`` in the header, rather than ``npartTotal[2]``.
 
 Installation
 ============
@@ -64,7 +64,7 @@ Volker Springel). Current repo contains contribution from
 `Greg Poole <https://github.com/gbpoole/>`__ for the CAMB P(k)
 handling and consistent particle IDs generation. 
 
-Maintained by `Manodeep Sinha <mailto:manodeep@gmail.com>`__. Any bugs
+Maintained by `Manodeep Sinha <mailto:manodeep@gmail.com>`__. Any new bugs
 are probably my fault. 
 
 
