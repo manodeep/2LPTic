@@ -202,12 +202,22 @@ void read_parameterfile(char *fname)
   for(i = 0; i < nt; i++)
     {
       if(*tag[i])
-	{
-	  if(ThisTask == 0)
-	    fprintf(stdout, "Error. I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+		{
+		  if(ThisTask == 0)
+			fprintf(stdout, "Error. I miss a value for tag '%s' in parameter file '%s'.\n", tag[i], fname);
+		  errorFlag = 1;
+		}
+    }
+  
+
+  //Check GlassTileFac values
+  if(ThisTask == 0) {
+	if(GlassTileFacSampleNumerator > GlassTileFacSampleDenom) {
+	  fprintf(stderr,"Error: Only subsampling is supported GlassTileFacSampleNumerator (=%d) must be smaller than GlassTileFacSampleDenom (=%d)\n",
+			  GlassTileFacSampleNumerator, GlassTileFacSampleDenom);
 	  errorFlag = 1;
 	}
-    }
+  }
 
   if(errorFlag)
     {

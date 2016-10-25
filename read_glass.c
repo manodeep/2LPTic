@@ -141,7 +141,7 @@ void read_glass(char *fname)
   /* Code from Greg Poole to generate same IDs across different simulations. 
 	 Makes matching halos trivial afterwards. */
   for(i = 0; i < GlassTileFac; i++){
-    if(i*GlassTileFacSampleNumerator % GlassTileFacSampleDenom ==0){
+    if(i % GlassTileFacSampleDenom < GlassTileFacSampleNumerator) {
 	  for(type = 0, n = 0; type < 6; type++)
 		{
 		  for(m = 0; m < header1.npartTotal[type]; m++, n++)
@@ -158,7 +158,8 @@ void read_glass(char *fname)
 	}
   }
 
-  const int64_t sqr_GlassTileFac = (GlassTileFac * GlassTileFacSampleNumerator/GlassTileFacSampleDenom) * (GlassTileFac * GlassTileFacSampleNumerator/GlassTileFacSampleDenom);
+  const int64_t subsample_oneaxis = (GlassTileFac * GlassTileFacSampleNumerator)/GlassTileFacSampleDenom;
+  const int64_t sqr_GlassTileFac = subsample_oneaxis * subsample_oneaxis;
   for(i=0;i<NTask;i++) {
 	const int64_t this_npart = npart_Task[i];
 	if(this_npart * sqr_GlassTileFac > INT_MAX) {
@@ -271,11 +272,11 @@ void read_glass(char *fname)
   long long GTF2=(long long)GlassTileFac*(long long)GlassTileFac;
 
   for(i = 0; i < GlassTileFac; i++){
-    if(i * GlassTileFacSampleNumerator % GlassTileFacSampleDenom==0){
+	if(i % GlassTileFacSampleDenom < GlassTileFacSampleNumerator){
 	  for(j = 0; j < GlassTileFac; j++){
-		if(j * GlassTileFacSampleNumerator % GlassTileFacSampleDenom==0){
+		if(j % GlassTileFacSampleDenom < GlassTileFacSampleNumerator){
 		  for(k = 0; k < GlassTileFac; k++){
-			if(k * GlassTileFacSampleNumerator % GlassTileFacSampleDenom ==0){
+			if(k % GlassTileFacSampleDenom < GlassTileFacSampleNumerator) {
 			  for(type = 0, n = 0; type < 6; type++)
 				{
 				  for(m = 0; m < header1.npartTotal[type]; m++, n++)
