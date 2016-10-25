@@ -48,8 +48,8 @@ set during compilation).
 
 The implementation requires two integers, ``GlassTileFacSampleNumerator`` and 
 ``GlassTileFacSampleDenom``, to be specified in the parameter file. The final 
-number of particles is set by **choose ``GlassTileFacSampleNumerator`` particles out
-of ``GlassTileFacSampleDenom`` hi-res particles**. 
+number of particles is set by choose ``GlassTileFacSampleNumerator`` particles out
+of ``GlassTileFacSampleDenom`` hi-res particles. 
 
 * To generate a ``1024^3`` subsample from a ``3072^3`` hi-res, set ``Nmesh=3072``, ``Nsample=1024``, ``GlassTileFac=3072``, ``GlassTileFacSampleNumerator=1`` and ``GlassTileFacSampleDenom=3``. 
 
