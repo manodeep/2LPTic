@@ -1,3 +1,5 @@
+** Warning ** I generated 2048^3 ICs (subsampled from a 3072^3) with this IC code and those simulations were wrong. However, 1024^3 simulations generated with this were fine. Presumably, something is wrong with *(at least)* the subsample fraction logic - do not use the subsampling features in this code -- i.e., set both ``GlassTileFacSampleNumerator`` and ``GlassTileFacSampleNumerator = 1``.
+
 Description
 ===========
 
