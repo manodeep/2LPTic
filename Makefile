@@ -4,7 +4,8 @@ OBJS := $(SRCS:.c=.o)
 INCL := allvars.h save.h power.h read_glass.h read_param.h  Makefile
 
 
-OPT += -DPRODUCE_CONSISTENT_IDS       # Set this to set exact same particle IDs as a higher resolution parent simulation (controlled by 
+### MS: Do not use this option -> likely has bug in it
+#OPT += -DPRODUCE_CONSISTENT_IDS      # Set this to set exact same particle IDs as a higher resolution parent simulation (controlled by 
                                       # parameter GlassTileFacSample). Note, this might require 64bit particle IDs since the 
                                       # parent simulation might have required 64bit IDs (even though a contiguous set of IDs
                                       # for the current simulation might fit in 32bits)
