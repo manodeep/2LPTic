@@ -18,8 +18,8 @@ OutputDir           /path/to/output/directory/ICs              % Directory for o
 
 GlassFile           ./glass1_le  % Supplied extension contains _le to indicate Little Endian or _be for Big Endian
 GlassTileFac        1080         % Set to Nparticles^1/3. Glass file contains only 1 particle -> Repeated Nsample times.
-GlassTileFacSampleNumerator 1    % Set to 1 -> particle IDs will be 1-> Nsample^3
-GlassTileFacSampleDenom     3    % Total number of particles will be Nglass * GlassTileFac^3 * (GlassTileFacSampleNumerator/GlassTileFacSampleDenom)
+GlassTileFacSampleNumerator 1    % Set to 1 -> Code potentially has bug otherwise
+GlassTileFacSampleDenom     1    % Set to 1 -> Code potentially has bug otherwise
 
 
 %% Cosmology related params
